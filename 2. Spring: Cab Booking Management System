@@ -1,0 +1,170 @@
+Problem Description
+In the bustling city of Metroville, ZoomRide, a popular ride-hailing platform, aims to offer seamless transportation experiences for its users. To enhance the platform's efficiency, the RideService layer must be implemented with three key functionalities: booking a ride, retrieving recent completed rides, and ending a ride.
+
+a. model package:
+
+->Contains the Driver, RideDetails and User entity class with attributes, Constructors, getters and setters.
+
+->The Driver entity should have the following attributes:
+
+id : The unique identifier for the driver (Long, Primary Key).
+availability : Indicates if the driver is currently available. It uses a BIT(1) type to represent true (available) or false (not available). (Boolean).
+name : The name of the driver, with a maximum length of 255 characters. It can be NULL if not specified. (String).
+rating : The rating of the driver, representing their performance. This field is mandatory and cannot be NULL.(Double)
+vehicleDetails : Contains details about the vehicle used by the driver, with a maximum length of 255 characters. This field can also be NULL.(String)
+->The User entity should have the following attributes:
+
+id : The unique identifier for the user (Long, Primary Key).
+email : The email address of the user, with a maximum length of 255 characters. It can be NULL.(String)
+name : The name of the user, with a maximum length of 255 characters. This field can be NULL if not specified.(String)
+paymentMethod : Indicates the payment method used by the user (e.g., credit card, cash). This field has a maximum length of 255 characters and can be NULL.(String)
+phone : The contact number of the user, with a maximum length of 255 characters. It can also be NULL.(String)
+->The RideDetails entity should have the following attributes:
+
+id : The unique identifier for the ride. (Long, Primary Key).
+driverId : The ID of the assigned driver for this ride (Foreign Key referencing the driver table).(Long)
+endLocation : The destination of the ride, with a maximum length of 255 characters. This field is mandatory and cannot be NULL.(String)
+endTime : The end time of the ride. This field can be NULL if the ride is ongoing.(LocalDateTime)
+fare : The fare for the ride, which is mandatory and cannot be NULL.(Double)
+rideStatus : The current status of the ride, which can be "Ongoing" or "Completed". This field is mandatory and cannot be NULL.(String)
+startLocation : The starting point of the ride, with a maximum length of 255 characters. This field is mandatory and cannot be NULL.(String)
+startTime : The start time of the ride. This field is mandatory and cannot be NULL.(LocalDateTime)
+userId : The ID of the user who booked the ride (Foreign Key referencing the user table).(Long)
+b. repository package: Contains the interface DriverRepository, RideDetailsRepository and UserRepository extending JpaRepository.
+
+c. service package: Contains RideService class with some method signature performing business logics
+
+d. controller package: Contains RideController with skeleton CRUD API endpoints.
+
+Task 1: Book a Ride
+Complete the method with logic as per the requirement.
+
+Function Name: bookRide(Long userId, String startLocation, String endLocation, double distance):
+Return Type: RideDetails
+Functionality: If no drivers are available, throw an exception indicating "No available drivers". Otherwise, calculate the fare based on the distance (Rs.25 per KM) and return the ride details, including the first driver available and the fare calculated.
+Task 2: Get Recent Completed Rides
+Complete the method with logic as per the requirement.
+
+Function Name: getRecentCompletedRides(Long userId)
+Return Type: List
+Functionality: Retrieve completed rides for the user within the last 30 minutes. Return a list of RideDetails that match the criteria.
+Task 3: End a Ride
+Complete the method with logic as per the requirement.
+
+Function Name: endRide(Long rideId)
+Return Type: RideDetails
+Functionality: End the specified ride by updating its status and setting the end time. If the ride ID does not exist, throw an exception indicating "Ride not found".
+NOTE:
+The required endpoints are provided in the RideController.java file so that you can check them easily.
+
+
+Execution time limit
+Having an issue with this question? Report
+
+
+********************CODE********************CODE********************CODE********************CODE********************CODE********************CODE********************CODE********************
+
+---------------------------------------------------------------------------------------
+RideService.java
+---------------------------------------------------------------------------------------
+
+package com.example.cabBooking.service;
+
+import com.example.cabBooking.entity.Driver;
+import com.example.cabBooking.entity.RideDetails;
+import com.example.cabBooking.entity.User;
+import com.example.cabBooking.repository.DriverRepository;
+import com.example.cabBooking.repository.RideDetailsRepository;
+import com.example.cabBooking.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.stream.*;
+
+import java.util.List;
+
+@Service
+public class RideService {
+    private static final double FARE_PER_KM = 25.0; // Fare in INR
+    @Autowired
+    private DriverRepository driverRepository;
+    @Autowired
+    private RideDetailsRepository rideDetailsRepository;
+    @Autowired
+    private UserRepository userRepository;
+
+    // Book a ride and return ride details with fare calculation
+    public RideDetails bookRide(Long userId, String startLocation, String endLocation, double distance) {
+        //code here
+        List<Driver> availabledDrivers = driverRepository.findByAvailabilityTrue();
+        if(availabledDrivers.isEmpty()) {
+            throw new RuntimeException("No available drivers");
+        }
+        Driver driver = availabledDrivers.get(0);
+
+        driver.setAvailability(false);
+        driverRepository.save(driver);
+
+        double fare = calculateFare(distance);
+
+        RideDetails ride = new RideDetails();
+        
+        ride.setUserId(userId);
+        ride.setDriverId(driver.getId());
+        ride.setEndLocation(endLocation);
+        // ride.setEndTime(null);
+        ride.setRideStatus("Ongoing");
+        ride.setStartLocation(startLocation);
+        ride.setStartTime(null);
+        ride.setFare(fare);
+
+        return rideDetailsRepository.save(ride);
+    }
+
+    // Method to calculate fare based on distance
+    private double calculateFare(double distance) {
+        return distance * FARE_PER_KM; // Fare calculation
+    }
+
+    // Get completed rides for a user within the last 30 minutes
+    public List<RideDetails> getRecentCompletedRides(Long userId) {
+        //code here
+        LocalDateTime now = LocalDateTime.now().minusMinutes(30);
+        
+        List<RideDetails> completedRideDetails = rideDetailsRepository.findByUserId(userId);
+
+
+        return completedRideDetails;
+    }
+
+    // End a ride and calculate the total fare
+    public RideDetails endRide(Long rideId) {
+        //code here
+        RideDetails ride = rideDetailsRepository.findById(rideId).orElseThrow(() -> new RuntimeException("Ride not found"));
+
+        ride.setRideStatus("Completed");
+        ride.setEndTime(LocalDateTime.now());
+        
+        return rideDetailsRepository.save(ride);
+    }
+
+    // Get all users
+    public List<User> getAllUsers() {
+        return userRepository.findAll();
+    }
+
+    // Get all drivers
+    public List<Driver> getAllDrivers() {
+        return driverRepository.findAll();
+    }
+
+    // Get all ride details
+    public List<RideDetails> getAllRideDetails() {
+        return rideDetailsRepository.findAll();
+    }
+}
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
